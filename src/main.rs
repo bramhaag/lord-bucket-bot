@@ -32,10 +32,7 @@ fn main() {
             .on_mention(true)
             .allow_dm(true)
             .ignore_webhooks(true))
-        .command("shard", |c| c
-            .min_args(2)
-            .usage("usage: !shard <total> <guild>")
-            .exec(shard_command)));
+        .on("shard", shard_command));
 
     if let Err(e) = client.start() {
         println!("client error: {:?}", e);
