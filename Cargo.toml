@@ -1,0 +1,8 @@
+[package]
+name = "shard_calculator_bot"
+version = "0.1.0"
+authors = ["sponges <spongybacon@hotmail.co.uk>"]
+
+[dependencies]
+serenity = "0.2.0"
+clap = "2.24.2"
