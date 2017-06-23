@@ -1,9 +1,33 @@
-#[macro_use]
-extern crate serenity;
+#[macro_use] extern crate serenity;
 extern crate clap;
+extern crate regex;
+#[macro_use] extern crate lazy_static;
+extern crate typemap;
 
-use serenity::Client;
+use serenity::client::Client;
+use serenity::client::Context;
+use serenity::model::{Message, ChannelId, RoleId, Mentionable, Member};
 use clap::{Arg, App};
+use regex::Regex;
+use typemap::Key;
+
+struct Channels;
+
+impl Key for Channels {
+    type Value = Vec<u64>;
+}
+
+struct Roles;
+
+impl Key for Roles {
+    type Value = Vec<u64>;
+}
+
+struct DeletionMessage;
+
+impl Key for DeletionMessage {
+    type Value = String;
+}
 
 fn main() {
     let matches = App::new("Shard Calculator Bot")
@@ -16,14 +40,49 @@ fn main() {
             .required(true)
             .takes_value(true)
             .help("Discord oauth application token"))
+        .arg(Arg::with_name("channels")
+            .short("c")
+            .long("channels")
+            .required(true)
+            .takes_value(true)
+            .help("Channels to delete commands in"))
+        .arg(Arg::with_name("roles")
+            .short("r")
+            .long("roles")
+            .required(true)
+            .takes_value(true)
+            .help("Roles that are allowed to run commands"))
+        .arg(Arg::with_name("message")
+            .short("m")
+            .long("message")
+            .required(true)
+            .takes_value(true)
+            .help("Message to DM after deleting user commands"))
         .get_matches();
 
     let token = matches.value_of("token").unwrap();
     let mut client = Client::login(&token);
+    {
+        let c = matches.value_of("channels").unwrap().split(",");
+        let mut channels = vec![];
+        for channel in c {
+            channels.push(channel.to_string().parse::<u64>().unwrap());
+        }
+        let r = matches.value_of("roles").unwrap().split(",");
+        let mut roles = vec![];
+        for role in r {
+            roles.push(role.to_string().parse::<u64>().unwrap());
+        }
+        let m = matches.value_of("message").unwrap().to_string();
+        let mut data = client.data.lock().unwrap();
+        data.insert::<Channels>(channels);
+        data.insert::<Roles>(roles);
+        data.insert::<DeletionMessage>(m);
+    }
 
     client.on_ready(|_ctx, ready|
         println!("ready! {}#{} {}", ready.user.name, ready.user.discriminator, ready.user.id));
-
+    client.on_message(message_handler);
     client.with_framework(|f| f
         .configure(|c| c
             .prefix("!")
@@ -36,6 +95,58 @@ fn main() {
 
     if let Err(e) = client.start() {
         println!("client error: {:?}", e);
+    }
+}
+
+fn message_handler(ctx: Context, msg: Message) {
+    lazy_static! {
+        static ref PATTERN: Regex = Regex::new("^(?:(?:!!!+)|(?:;+)|(?:\\.\\.\\.+)).+").unwrap();
+    }
+
+    if msg.is_private() || msg.author.bot {
+        return;
+    }
+
+    {
+        let data = ctx.data.lock().unwrap();
+        let ChannelId(channel_id) = msg.channel_id;
+        if !data.get::<Channels>().unwrap().contains(&channel_id) {
+            return;
+        }
+
+        let guild = match msg.guild() {
+            Some(guild) => guild,
+            None => {
+                println!("Could not get message guild!");
+                return;
+            }
+        };
+        let guild = guild.read().unwrap();
+        let member: Member = match guild.member(msg.author.id) {
+            Ok(member) => member,
+            _ => {
+                println!("Could not find member for message author {}", msg.author.id);
+                return;
+            }
+        };
+        let roles = data.get::<Roles>().unwrap();
+        for role in member.roles {
+            let RoleId(id) = role;
+            if roles.contains(&id) {
+                return;
+            }
+        }
+    }
+
+    if PATTERN.is_match(msg.content.as_ref()) {
+        if let Err(e) = msg.delete() {
+            println!("Error deleting msg {:?}: {:?}", msg.id, e);
+        }
+        let data = ctx.data.lock().unwrap();
+        let deletion_message = data.get::<DeletionMessage>().unwrap();
+        if let Err(e) = msg.author.dm(deletion_message.as_ref()) {
+            println!("Error sending message: {:?}", e);
+        }
     }
 }
 

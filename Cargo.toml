@@ -6,3 +6,6 @@ authors = ["sponges <spongybacon@hotmail.co.uk>"]
 [dependencies]
 serenity = "0.2.0"
 clap = "2.24.2"
+regex = "0.2"
+lazy_static = "0.2.8"
+typemap = "0.3"
