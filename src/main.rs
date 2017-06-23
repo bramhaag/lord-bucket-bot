@@ -12,18 +12,16 @@ use regex::Regex;
 use typemap::Key;
 
 struct Channels;
+struct Roles;
+struct DeletionMessage;
 
 impl Key for Channels {
     type Value = Vec<u64>;
 }
 
-struct Roles;
-
 impl Key for Roles {
     type Value = Vec<u64>;
 }
-
-struct DeletionMessage;
 
 impl Key for DeletionMessage {
     type Value = String;
