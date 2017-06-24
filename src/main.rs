@@ -4,23 +4,24 @@ extern crate regex;
 #[macro_use] extern crate lazy_static;
 extern crate typemap;
 
-use serenity::client::Client;
-use serenity::client::Context;
-use serenity::model::{Message, ChannelId, RoleId, Mentionable, Member};
+use serenity::client::{Client, Context};
+use serenity::model::{Message, Member};
 use clap::{Arg, App};
 use regex::Regex;
 use typemap::Key;
+
+type List = Vec<u64>;
 
 struct Channels;
 struct Roles;
 struct DeletionMessage;
 
 impl Key for Channels {
-    type Value = Vec<u64>;
+    type Value = List;
 }
 
 impl Key for Roles {
-    type Value = Vec<u64>;
+    type Value = List;
 }
 
 impl Key for DeletionMessage {
@@ -66,20 +67,34 @@ fn main() {
         for channel in c {
             channels.push(channel.to_string().parse::<u64>().unwrap());
         }
-        let r = matches.value_of("roles").unwrap().split(",");
-        let mut roles = vec![];
-        for role in r {
-            roles.push(role.to_string().parse::<u64>().unwrap());
-        }
+
+        let channels = matches
+            .value_of("channels")
+            .unwrap()
+            .split(",")
+            .into_iter()
+            .map(|c| c.to_string().parse::<u64>().unwrap())
+            .collect();
+
+        let roles = matches
+            .value_of("roles")
+            .unwrap()
+            .split(",")
+            .into_iter()
+            .map(|c| c.to_string().parse::<u64>().unwrap())
+            .collect();
+
         let m = matches.value_of("message").unwrap().to_string();
         let mut data = client.data.lock().unwrap();
+
         data.insert::<Channels>(channels);
         data.insert::<Roles>(roles);
         data.insert::<DeletionMessage>(m);
     }
 
-    client.on_ready(|_ctx, ready|
-        println!("ready! {}#{} {}", ready.user.name, ready.user.discriminator, ready.user.id));
+    client.on_ready(|_, ready| {
+        println!("ready! {}#{} {}", ready.user.name, ready.user.discriminator, ready.user.id);
+    });
     client.on_message(message_handler);
     client.with_framework(|f| f
         .configure(|c| c
@@ -107,8 +122,7 @@ fn message_handler(ctx: Context, msg: Message) {
 
     {
         let data = ctx.data.lock().unwrap();
-        let ChannelId(channel_id) = msg.channel_id;
-        if !data.get::<Channels>().unwrap().contains(&channel_id) {
+        if !data.get::<Channels>().unwrap().contains(&msg.channel_id.0) {
             return;
         }
 
@@ -122,15 +136,14 @@ fn message_handler(ctx: Context, msg: Message) {
         let guild = guild.read().unwrap();
         let member: Member = match guild.member(msg.author.id) {
             Ok(member) => member,
-            _ => {
-                println!("Could not find member for message author {}", msg.author.id);
+            Err(e) => {
+                println!("Could not find member for message author {}: {:?}", msg.author.id, e);
                 return;
             }
         };
         let roles = data.get::<Roles>().unwrap();
         for role in member.roles {
-            let RoleId(id) = role;
-            if roles.contains(&id) {
+            if roles.contains(&role.0) {
                 return;
             }
         }
