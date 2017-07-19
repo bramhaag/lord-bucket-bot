@@ -150,7 +150,7 @@ fn message_handler(ctx: Context, msg: Message) {
     }
 
     if PATTERN.is_match(msg.content.as_ref()) {
-        if let Err(e) = msg.delete() {
+        if let Err(_) = msg.delete() {
             // error = message was already deleted
             return;
         }
