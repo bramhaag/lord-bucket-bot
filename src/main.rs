@@ -156,7 +156,7 @@ fn message_handler(ctx: Context, msg: Message) {
         }
         let data = ctx.data.lock().unwrap();
         let deletion_message = data.get::<DeletionMessage>().unwrap();
-        _ = msg.author.dm(deletion_message.as_ref());
+        let _ = msg.author.dm(deletion_message.as_ref());
     }
 }
 
