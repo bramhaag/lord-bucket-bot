@@ -136,8 +136,8 @@ fn message_handler(ctx: Context, msg: Message) {
         let guild = guild.read().unwrap();
         let member: Member = match guild.member(msg.author.id) {
             Ok(member) => member,
-            Err(e) => {
-                println!("Could not find member for message author {}: {:?}", msg.author.id, e);
+            Err(_) => {
+                //
                 return;
             }
         };
@@ -151,13 +151,12 @@ fn message_handler(ctx: Context, msg: Message) {
 
     if PATTERN.is_match(msg.content.as_ref()) {
         if let Err(e) = msg.delete() {
-            println!("Error deleting msg {:?}: {:?}", msg.id, e);
+            // error = message was already deleted
+            return;
         }
         let data = ctx.data.lock().unwrap();
         let deletion_message = data.get::<DeletionMessage>().unwrap();
-        if let Err(e) = msg.author.dm(deletion_message.as_ref()) {
-            println!("Error sending message: {:?}", e);
-        }
+        _ = msg.author.dm(deletion_message.as_ref());
     }
 }
 
