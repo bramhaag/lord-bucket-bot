@@ -60,7 +60,7 @@ fn main() {
         .get_matches();
 
     let token = matches.value_of("token").unwrap();
-    let mut client = Client::login(&token);
+    let mut client = Client::new(&token);
     {
         let c = matches.value_of("channels").unwrap().split(",");
         let mut channels = vec![];
@@ -156,7 +156,7 @@ fn message_handler(ctx: Context, msg: Message) {
         }
         let data = ctx.data.lock().unwrap();
         let deletion_message = data.get::<DeletionMessage>().unwrap();
-        let _ = msg.author.dm(deletion_message.as_ref());
+        let _ = msg.author.dm(|m| m.content(deletion_message));
     }
 }
 
