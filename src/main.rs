@@ -112,6 +112,10 @@ fn main() {
 }
 
 fn message_handler(ctx: Context, msg: Message) {
+    if msg.content == ";-;" {
+        return;
+    }
+
     lazy_static! {
         static ref PATTERN: Regex = Regex::new("^(?:(?:!!!+)|(?:;+)|(?:\\.\\.\\.+)).+").unwrap();
     }
