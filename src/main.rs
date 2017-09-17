@@ -117,7 +117,7 @@ fn message_handler(ctx: Context, msg: Message) {
     }
 
     lazy_static! {
-        static ref PATTERN: Regex = Regex::new("^(?:(?:!!!+)|(?:;+)|(?:\\.\\.\\.+)).+").unwrap();
+        static ref PATTERN: Regex = Regex::new("^(!{3,}|;{3,}|\.{3,})[-\w\s]+.+").unwrap();
     }
 
     if msg.is_private() || msg.author.bot {
